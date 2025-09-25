@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>বাসা ভাড়া হিসাব</title>
+<style>
+  body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 10px; }
+  h2 { text-align: center; margin-bottom: 10px; font-size: 1.5em; }
+  h3 { margin-bottom: 5px; font-size: 1.2em; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 10px; background: #fff; }
+  th, td { border: 1px solid #ccc; padding: 5px; text-align: center; font-size: 0.9em; }
+  th { background: #eee; }
+  input[type="number"], input[type="text"], input[type="date"] { width: 100%; box-sizing: border-box; font-size: 0.9em; }
+  .month-section { margin-bottom: 30px; }
+  .buttons { margin: 5px 0; text-align: right; }
+  button { padding: 5px 10px; margin-left: 5px; font-size: 0.9em; }
+  .totals { text-align: right; margin-top: 5px; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<h2>বাসা ভাড়া হিসাব (১ বছর)</h2>
+
+<div id="monthsContainer"></div>
+
+<button onclick="saveData()">সেভ করুন</button>
+
+<script>
+const months = ["জানুয়ারি","ফেব্রুয়ারি","মার্চ","এপ্রিল","মে","জুন","জুলাই","আগস্ট","সেপ্টেম্বর","অক্টোবর","নভেম্বর","ডিসেম্বর"];
+const defaultRooms = 14;
+
+function createMonthTable(monthIndex) {
+  const container = document.createElement("div");
+  container.className = "month-section";
+  container.id = "month-" + monthIndex;
+  
+  const title = document.createElement("h3");
+  title.textContent = months[monthIndex];
+  container.appendChild(title);
+
+  const buttonsDiv = document.createElement("div");
+  buttonsDiv.className = "buttons";
+  const addBtn = document.createElement("button");
+  addBtn.textContent = "রুম এড করুন";
+  addBtn.onclick = () => addRoomRow(monthIndex);
+  const removeBtn = document.createElement("button");
+  removeBtn.textContent = "রুম রিমুভ করুন";
+  removeBtn.onclick = () => removeRoomRow(monthIndex);
+  buttonsDiv.appendChild(addBtn);
+  buttonsDiv.appendChild(removeBtn);
+  container.appendChild(buttonsDiv);
+
+  const table = document.createElement("table");
+  table.id = "table-" + monthIndex;
+  const thead = document.createElement("thead");
+  thead.innerHTML = `<tr>
+    <th>রুম নাম্বার</th>
+    <th>নাম</th>
+    <th>মোবাইল</th>
+    <th>ভাড়া</th>
+    <th>তারিখ</th>
+    <th>আদায়</th>
+    <th>বকেয়া</th>
+  </tr>`;
+  table.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+  table.appendChild(tbody);
+  container.appendChild(table);
+
+  // মোট আদায় ও বকেয়ার জন্য div
+  const totalsDiv = document.createElement("div");
+  totalsDiv.className = "totals";
+  totalsDiv.id = "totals-" + monthIndex;
+  totalsDiv.textContent = "মোট আদায়: 0 , মোট বকেয়া: 0";
+  container.appendChild(totalsDiv);
+
+  // ডিফল্ট ১৪ রুম
+  for(let i=0; i<defaultRooms; i++){
+    addRoomRow(monthIndex);
+  }
+
+  document.getElementById("monthsContainer").appendChild(container);
+}
+
+function addRoomRow(monthIndex){
+  const table = document.getElementById("table-" + monthIndex).querySelector("tbody");
+  const row = document.createElement("tr");
+
+  row.innerHTML = `
+    <td><input type="text" class="room-number" placeholder="রুম"></td>
+    <td><input type="text" class="name" placeholder="নাম"></td>
+    <td><input type="text" class="mobile" placeholder="মোবাইল"></td>
+    <td><input type="number" class="rent" value="0" oninput="updateRow(this)"></td>
+    <td><input type="date" class="date"></td>
+    <td><input type="number" class="paid" value="0" oninput="updateRow(this)"></td>
+    <td><input type="number" class="due" value="0" readonly></td>
+  `;
+  table.appendChild(row);
+  updateRow(row.querySelector(".rent"));
+}
+
+function removeRoomRow(monthIndex){
+  const tbody = document.getElementById("table-" + monthIndex).querySelector("tbody");
+  if(tbody.rows.length > 0){
+    tbody.deleteRow(-1);
+    updateTotals(monthIndex);
+  }
+}
+
+function updateRow(input){
+  const row = input.closest("tr");
+  const rent = parseFloat(row.querySelector(".rent").value) || 0;
+  const paid = parseFloat(row.querySelector(".paid").value) || 0;
+  row.querySelector(".due").value = rent - paid;
+
+  const monthIndex = parseInt(row.closest(".month-section").id.split("-")[1]);
+  updateTotals(monthIndex);
+}
+
+function updateTotals(monthIndex){
+  const table = document.getElementById("table-" + monthIndex).querySelector("tbody");
+  let totalPaid = 0, totalDue = 0;
+  for(let r of table.rows){
+    totalPaid += parseFloat(r.querySelector(".paid").value) || 0;
+    totalDue += parseFloat(r.querySelector(".due").value) || 0;
+  }
+  const totalsDiv = document.getElementById("totals-" + monthIndex);
+  totalsDiv.textContent = `মোট আদায়: ${totalPaid} , মোট বকেয়া: ${totalDue}`;
+}
+
+function saveData(){
+  const data = {};
+  months.forEach((month, i) => {
+    const table = document.getElementById("table-" + i).querySelector("tbody");
+    const rows = [];
+    for(let r of table.rows){
+      rows.push({
+        roomNumber: r.querySelector(".room-number").value,
+        name: r.querySelector(".name").value,
+        mobile: r.querySelector(".mobile").value,
+        rent: parseFloat(r.querySelector(".rent").value) || 0,
+        date: r.querySelector(".date").value,
+        paid: parseFloat(r.querySelector(".paid").value) || 0,
+        due: parseFloat(r.querySelector(".due").value) || 0,
+      });
+    }
+    data[month] = rows;
+  });
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"});
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "rent_data.json";
+  link.click();
+}
+
+// ১২ মাসের টেবিল তৈরি
+for(let i=0; i<12; i++){
+  createMonthTable(i);
+}
+</script>
+
+</body>
+</html>
